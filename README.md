@@ -8,7 +8,7 @@
 | File existence | `--exists filename` | `waitfor --exists foo.txt` | Waits until the file `foo.txt` exists |
 | File non-existence | `--not-exists filename` | `waitfor --not-exists bar.txt` | Waits until the file `bar.txt` _no longer_ exists |
 | HTTP GET | `--get [code,]url` | `--get http://google.com` | Waits until a GET to Google returns [HTTP status code](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes) 200 |
-|          |                    | `--get 404,http://example.com` | Waits until a GET to example.com returns 400 |
+|          |                    | `--get 404,http://example.com` | Waits until a GET to example.com returns 404 |
 
 ## Additional flags
 | Flag | Description |
