@@ -17,7 +17,7 @@
 | `--verbose` | Writes some details about status checks to stdout. Without this option, nothing is written. |
 
 ## Multiple conditions
-You can combine any number of the above conditions*, and as soon as any one of them is met, the program will exit. For example, this command will complete when `foobar.com` is found _or_ after ten minutes has passed:
+You can combine any number of the above conditions (except `--elapsed`, which may be used only once), and as soon as any one of them is met, the program will exit. For example, this command will complete when `foobar.txt` is found _or_ after ten minutes has passed:
 
     waitfor --delay 10m --exists foobar.txt
 
@@ -47,5 +47,3 @@ waitfor --get http://google.com/,http://microsoft.com
 ```
 
 Because HTTP GET calls incur nontrivial latency, the current implementation counts how long each condition takes to run, and that duration is subtracted from the `--interval`. That remaining time is spent sleeping. If multiple GETs are called such that the delay exceeds the interval, a new loop will immediately be stated. Invocations are not currently parallelized.
-
-_*Only one time delay may be specified_
