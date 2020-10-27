@@ -1,31 +1,33 @@
 use std::time::Duration;
 
 pub fn parse_duration(duration: &str) -> Result<Duration, ()> {
-    let mut chars = duration.chars().peekable();
+    //let mut chars = duration.chars().peekable();
 
     let mut total_delay = 0.;
 
     let mut acc = 0;
-    while let Some(&c) = chars.peek() {
+    for c in duration.chars() {
+        //while let Some(&c) = chars.peek() {
         match c {
             '0'..='9' => {
                 acc *= 10;
-                acc += chars.next().unwrap().to_digit(10).unwrap();
+                //acc += chars.next().unwrap().to_digit(10).unwrap();
+                acc += c.to_digit(10).unwrap();
             }
             'h' => {
                 total_delay += acc as f64 * 3600.;
                 acc = 0;
-                chars.next().unwrap();
+                //chars.next().unwrap();
             }
             'm' => {
                 total_delay += acc as f64 * 60.;
                 acc = 0;
-                chars.next().unwrap();
+                //chars.next().unwrap();
             }
             's' => {
                 total_delay += acc as f64;
                 acc = 0;
-                chars.next().unwrap();
+                //chars.next().unwrap();
             }
             _ => return Err(()),
         }

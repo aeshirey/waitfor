@@ -13,7 +13,7 @@
 ## Additional flags
 | Flag | Description |
 |------|-------------|
-| `--interval n` | The delay between checks against the specified condition(s). Default is 2 |
+| `--interval n` | The delay in seconds between checks against the specified condition(s). Default is 2 |
 | `--verbose` | Writes some details about status checks to stdout. Without this option, nothing is written. |
 
 ## Multiple conditions
@@ -37,13 +37,15 @@ The `--get` flag executes an HTTP GET action against the specified URL, which is
 
 ```bash
 # Check for either URL to be available as 200 OK:
-waitfor --get http://my-site.com/ --get 200,http://my-site.com
+waitfor --get http://my-site.com/ --get 200,http://your-site.com
 
 # Check for the URL to return 200 or 300
 waitfor --get http://my-site.com/ --get 300,http://my-site.com
 
 # Invalid! URLs must be split into two --get flags:
-waitfor --get http://google.com/,http://microsoft.com
+# waitfor --get http://google.com/,http://microsoft.com
+# Better:
+waitfor --get http://google.com/ --get http://microsoft.com
 ```
 
 Because HTTP GET calls incur nontrivial latency, the current implementation counts how long each condition takes to run, and that duration is subtracted from the `--interval`. That remaining time is spent sleeping. If multiple GETs are called such that the delay exceeds the interval, a new loop will immediately be stated. Invocations are not currently parallelized.

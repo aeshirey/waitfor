@@ -6,7 +6,7 @@ pub enum Wait {
     Elapsed { end_instant: Instant },
     Exists { not: bool, path: String },
     HttpGet { url: String, status: u16 },
-    Pid(u64),
+    Pid { pid: u64 },
     // FileOpen(??), // Check if a handle is open on a particular file (ie, when a file is done being modified)
 }
 
@@ -20,7 +20,7 @@ impl Wait {
                 let result = ureq::get(url).call();
                 *status == result.status()
             }
-            Wait::Pid(_pid) => todo!(),
+            Wait::Pid { pid: _ } => todo!(),
         }
     }
 }

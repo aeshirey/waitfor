@@ -6,7 +6,87 @@ mod waitfor;
 use waitfor::Wait;
 
 fn main() -> Result<(), ()> {
-    let matches = App::new("waitfor")
+    let matches = get_app().get_matches();
+
+    let mut waitfors = Vec::new();
+
+    let verbose: bool = matches.is_present("verbose");
+
+    if let Some(elapsed) = matches.value_of("elapsed") {
+        let duration = misc::parse_duration(elapsed).unwrap();
+
+        waitfors.push(Wait::Elapsed {
+            end_instant: std::time::Instant::now().checked_add(duration).unwrap(),
+        });
+    }
+
+    if let Some(pids) = matches.values_of("pid") {
+        for pid in pids {
+            waitfors.push(Wait::Pid {
+                pid: pid.parse().unwrap(),
+            });
+        }
+    }
+
+    if let Some(paths) = matches.values_of("exists") {
+        for path in paths {
+            waitfors.push(Wait::Exists {
+                not: false,
+                path: path.into(),
+            });
+        }
+    }
+
+    if let Some(paths) = matches.values_of("not-exists") {
+        for path in paths {
+            waitfors.push(Wait::Exists {
+                not: true,
+                path: path.into(),
+            });
+        }
+    }
+
+    if let Some(urlargs) = matches.values_of("get") {
+        for urlarg in urlargs {
+            let (status, url) = misc::parse_http_get(urlarg).unwrap();
+            waitfors.push(Wait::HttpGet { url, status });
+        }
+    }
+
+    if waitfors.is_empty() {
+        // Per https://github.com/clap-rs/clap/issues/1264#issuecomment-394552708, we can't use
+        // AppSettings::ArgRequiredElseHelp with default arguments, so we'll have to manually check for
+        // the 'help' scenario (here). Since `matches` consumes the app, we've got to recreate it:
+        return get_app().print_help().map_err(|_| ());
+    }
+
+    let process_started = std::time::Instant::now();
+
+    let interval = Duration::from_secs_f64(matches.value_of("interval").unwrap().parse().unwrap());
+
+    loop {
+        let start = std::time::Instant::now();
+        for waitfor in waitfors.iter() {
+            if verbose {
+                println!("Checking {:?}", waitfor);
+            }
+
+            if waitfor.condition_met() {
+                if verbose {
+                    println!("Waited {}", process_started.elapsed().as_secs());
+                }
+                return Ok(());
+            }
+        }
+        let loop_time = start.elapsed();
+        if interval > loop_time {
+            std::thread::sleep(interval - loop_time);
+        }
+    }
+}
+
+fn get_app() -> clap::App<'static, 'static> {
+    App::new("waitfor")
         .version("0.1")
         .author("Adam Shirey <adam@shirey.ch>")
         .about("")
@@ -87,77 +167,4 @@ fn main() -> Result<(), ()> {
                         .map_err(|_| format!("Invalid HTTP GET definition: {}",a))
                 )
         )
-        .setting(clap::AppSettings::ArgRequiredElseHelp)
-        .get_matches();
-
-    let mut waitfors = Vec::new();
-
-    let verbose : bool = matches.is_present("verbose");
-
-    if let Some(elapsed) = matches.value_of("elapsed") {
-        let duration = misc::parse_duration(elapsed).unwrap();
-
-        waitfors.push(Wait::Elapsed {
-            end_instant: std::time::Instant::now().checked_add(duration).unwrap(),
-        });
-    }
-
-    if let Some(pids) = matches.values_of("pid") {
-        for pid in pids {
-            waitfors.push(Wait::Pid(pid.parse().unwrap()));
-        }
-    }
-
-    if let Some(paths) = matches.values_of("exists") {
-        for path in paths {
-            waitfors.push(Wait::Exists {
-                not: false,
-                path: path.into(),
-            });
-        }
-    }
-
-    if let Some(paths) = matches.values_of("not-exists") {
-        for path in paths {
-            waitfors.push(Wait::Exists {
-                not: true,
-                path: path.into(),
-            });
-        }
-    }
-
-    if let Some(urlargs) = matches.values_of("get") {
-        for urlarg in urlargs {
-            let (status, url) = misc::parse_http_get(urlarg).unwrap();
-            waitfors.push(Wait::HttpGet { url, status });
-        }
-    }
-
-    if waitfors.is_empty() {
-        return Err(());
-    }
-
-    let process_started = std::time::Instant::now();
-
-    let interval = Duration::from_secs_f64(matches.value_of("interval").unwrap().parse().unwrap());
-
-    loop {
-        let start = std::time::Instant::now();
-        for waitfor in waitfors.iter() {
-                if verbose {
-                    println!("Checking {:?}", waitfor);
-                }
-
-            if waitfor.condition_met() {
-                if verbose {
-                    println!("Waited {}", process_started.elapsed().as_secs());
-                }
-                return Ok(());
-            }
-        }
-        let loop_time = start.elapsed();
-        if interval > loop_time {
-            std::thread::sleep(interval - loop_time);
-        }
-    }
 }
