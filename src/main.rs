@@ -46,10 +46,43 @@ fn main() -> Result<(), ()> {
         }
     }
 
+    if let Some(hosts) = matches.values_of("tcp") {
+        for host in hosts {
+            waitfors.push(Wait::TcpHost {
+                not: false,
+                host: host.to_string(),
+            });
+        }
+    }
+
+    if let Some(hosts) = matches.values_of("not-tcp") {
+        for host in hosts {
+            waitfors.push(Wait::TcpHost {
+                not: true,
+                host: host.to_string(),
+            });
+        }
+    }
+
     if let Some(urlargs) = matches.values_of("get") {
         for urlarg in urlargs {
-            let (status, url) = misc::parse_http_get(urlarg).unwrap();
-            waitfors.push(Wait::HttpGet { url, status });
+            let (status, url) = misc::parse_http_get(urlarg);
+            waitfors.push(Wait::HttpGet {
+                not: false,
+                url,
+                status,
+            });
+        }
+    }
+
+    if let Some(urlargs) = matches.values_of("not-get") {
+        for urlarg in urlargs {
+            let (status, url) = misc::parse_http_get(urlarg);
+            waitfors.push(Wait::HttpGet {
+                not: true,
+                url,
+                status,
+            });
         }
     }
 
@@ -146,7 +179,6 @@ fn get_app() -> clap::App<'static, 'static> {
                 .long("not-exists")
                 .value_name("file-or-dir")
                 .help("Delays until the specified file no longer exists.")
-                //.long_help(r#""#)
                 .required(false)
                 .multiple(true)
                 .takes_value(true),
@@ -157,14 +189,52 @@ fn get_app() -> clap::App<'static, 'static> {
                 .long("get")
                 .value_name("get")
                 .help("Delays until an HTTP GET against the specified URL returns 200 OK or the passed status.")
-                //.long_help(r#""#)
                 .required(false)
                 .multiple(true)
                 .takes_value(true)
-                .validator(|a|
-                    misc::parse_http_get(&a)
-                        .map(|_| ())
-                        .map_err(|_| format!("Invalid HTTP GET definition: {}",a))
-                )
+        )
+        .arg(
+            Arg::with_name("not-get")
+                .short("G")
+                .long("not-get")
+                .value_name("not-get")
+                .help("Delays until an HTTP GET against the specified URL does not return 200 OK or the passed status.")
+                .required(false)
+                .multiple(true)
+                .takes_value(true)
+        )
+        .arg(
+            Arg::with_name("tcp")
+                .short("p")
+                .long("tcp")
+                .value_name("host:port")
+                .help("Delays until a TCP connection can be established to the specified host.")
+                .required(false)
+                .multiple(true)
+                .takes_value(true)
+                .validator(|a| {
+                    if misc::validate_tcp(&a) {
+                        Ok(())
+                    } else {
+                        Err("TCP host must include ':<port>'".into())
+                    }
+                })
+        )
+        .arg(
+            Arg::with_name("not-tcp")
+                .short("P")
+                .long("not-tcp")
+                .value_name("host:port")
+                .help("Delays until a TCP connection can't be established to the specified host.")
+                .required(false)
+                .multiple(true)
+                .takes_value(true)
+                .validator(|a| {
+                    if misc::validate_tcp(&a) {
+                        Ok(())
+                    } else {
+                        Err("TCP host must include ':<port>'".into())
+                    }
+                })
         )
 }

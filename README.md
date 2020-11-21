@@ -2,13 +2,23 @@
 `waitfor` is a shell app for delaying on conditions. It will simply block until any one of the specified conditions is met. (To require multiple conditions, chain `waitfor` calls together with `&&`.)
 
 ## Condition types 
-| Condition type | Flag | Example | Notes |
-|----------------|------|---------|-------|
-| Time delay     | `--delay spec` | `waitfor --delay 10m30s`    | Supports only full integer values for `h`, `m`, and `s` |
-| File existence | `--exists filename` | `waitfor --exists foo.txt` | Waits until the file `foo.txt` exists |
-| File non-existence | `--not-exists filename` | `waitfor --not-exists bar.txt` | Waits until the file `bar.txt` _no longer_ exists |
-| HTTP GET | `--get [code,]url` | `--get http://google.com` | Waits until a GET to Google returns [HTTP status code](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes) 200 |
-|          |                    | `--get 404,http://example.com` | Waits until a GET to example.com returns 404 |
+| Condition type | Flag | Short | Example | Notes |
+|----------------|------|-------|---------|-------|
+| Time delay     | `--elapsed spec` | `-t` | `waitfor --elapsed 10m30s`    | Supports only full integer values for `d`, `h`, `m`, and `s` |
+| File existence | `--exists filename` | `-e` | `waitfor --exists foo.txt` | Waits until the file `foo.txt` exists |
+| HTTP GET       | `--get [code,]url` | `-g` | `--get http://google.com` | Waits until a GET to Google returns [HTTP status code](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes) 200 |
+|                |                    | | `--get 404,http://example.com` | Waits until a GET to example.com returns 404 |
+| TCP connection | `--tcp host:port` | `-p` | `--tcp 192.168.0.123:22` | Waits until a TCP connection can be made to the specified host. The numeric port must be specified. |
+
+## Negation
+You can also negate conditions (except for elapsed time) by prefixing the flag with `not` or by uppercasing the short flag:
+
+| Condition type | Flag | Short | Example | Notes |
+|----------------|------|-------|---------|-------|
+| File non-existence | `--not-exists filename` | `-E` | `waitfor --not-exists bar.txt` | Waits until the file `bar.txt` _no longer_ exists |
+| HTTP GET | `--not-get [code,]url` | `-G` | `--not-get http://google.com` | Waits until a GET to Google _doesn't_ return HTTP status code 200 |
+|          |                    | | `--get 404,http://example.com` | Waits until a GET to example.com returns anything but 404 |
+| TCP connection | `--not-tcp host:port` | `-P` | `--not-tcp 192.168.0.123:22` | Waits until a TCP connection _can not_ be made to the specified host (either because the host itself is down or the port isn't available). |
 
 ## Additional flags
 | Flag | Description |
@@ -19,7 +29,7 @@
 ## Multiple conditions
 You can combine any number of the above conditions (except `--elapsed`, which may be used only once), and as soon as any one of them is met, the program will exit. For example, this command will complete when `foobar.txt` is found _or_ after ten minutes has passed:
 
-    waitfor --delay 10m --exists foobar.txt
+    waitfor --elapsed 10m --exists foobar.txt
 
 Multiple existence checks are also easy. To wait for either `foo.txt` or `bar.jpg` to exist:
 
@@ -48,4 +58,4 @@ waitfor --get http://my-site.com/ --get 300,http://my-site.com
 waitfor --get http://google.com/ --get http://microsoft.com
 ```
 
-Because HTTP GET calls incur nontrivial latency, the current implementation counts how long each condition takes to run, and that duration is subtracted from the `--interval`. That remaining time is spent sleeping. If multiple GETs are called such that the delay exceeds the interval, a new loop will immediately be stated. Invocations are not currently parallelized.
+Because HTTP GET calls incur nontrivial latency, the current implementation counts how long each condition takes to run, and that duration is subtracted from the `--interval`. That remaining time is spent sleeping. If multiple GETs are called such that the delay exceeds the interval, a new loop will immediately be started. Invocations are not currently parallelized.
