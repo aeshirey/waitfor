@@ -89,7 +89,7 @@ fn main() -> Result<(), ()> {
     if let Some(paths) = matches.values_of("update") {
         for path in paths {
             if let Ok(metadata) = std::fs::metadata(path) {
-                if metadata.modified().is_ok() {
+                if metadata.is_file() && metadata.modified().is_ok() {
                     waitfors.push(Wait::Update {
                         not: false,
                         path: path.into(),
@@ -103,11 +103,40 @@ fn main() -> Result<(), ()> {
     if let Some(paths) = matches.values_of("not-update") {
         for path in paths {
             if let Ok(metadata) = std::fs::metadata(path) {
-                if metadata.modified().is_ok() {
+                if metadata.is_file() && metadata.modified().is_ok() {
                     waitfors.push(Wait::Update {
                         not: true,
                         path: path.into(),
                         modified: None.into(),
+                    });
+                }
+            }
+        }
+    }
+
+    if let Some(paths) = matches.values_of("size") {
+        for path in paths {
+            if let Ok(metadata) = std::fs::metadata(path) {
+                // TODO: handle directories?
+                if metadata.is_file() {
+                    waitfors.push(Wait::FileSize {
+                        not: false,
+                        path: path.into(),
+                        bytes: None.into(),
+                    });
+                }
+            }
+        }
+    }
+
+    if let Some(paths) = matches.values_of("not-size") {
+        for path in paths {
+            if let Ok(metadata) = std::fs::metadata(path) {
+                if metadata.is_file() {
+                    waitfors.push(Wait::FileSize {
+                        not: true,
+                        path: path.into(),
+                        bytes: None.into(),
                     });
                 }
             }
@@ -269,9 +298,9 @@ fn get_app() -> clap::App<'static, 'static> {
             Arg::with_name("update")
                 .short("u")
                 .long("update")
-                .value_name("file-or-dir")
+                .value_name("file")
                 .help("Delays until the specified file's modified date is updated.")
-                .long_help("When the files's update time is is changed, this condition will be true. If the modified time can't be determined initially, it is ignored. if it can't be found subsequently, that check is skipped.")
+                .long_help("When the file's update time is changed, this condition will be true. If the modified time can't be determined initially, it is ignored. if it can't be found subsequently, that check is skipped.")
                 .required(false)
                 .multiple(true)
                 .takes_value(true),
@@ -280,9 +309,31 @@ fn get_app() -> clap::App<'static, 'static> {
             Arg::with_name("not-update")
                 .short("U")
                 .long("not-update")
-                .value_name("file-or-dir")
+                .value_name("file")
                 .help("Delays until the specified file's modified date stops being updated.")
-                .long_help("When the files's update time stops changing (is identical for two consecutive checks), this condition will be true.")
+                .long_help("When the file's update time stops changing (is identical for two consecutive checks), this condition will be true.")
+                .required(false)
+                .multiple(true)
+                .takes_value(true),
+        )
+
+        .arg(
+            Arg::with_name("size")
+                .short("s")
+                .long("size")
+                .value_name("file")
+                .help("Delays until the specified file's size date changes.")
+                .required(false)
+                .multiple(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("not-size")
+                .short("S")
+                .long("not-size")
+                .value_name("file")
+                .help("Delays until the specified file's size date doesn't change.")
+                .long_help("When the file's size stops changing (is identical for two consecutive checks), this condition will be true.")
                 .required(false)
                 .multiple(true)
                 .takes_value(true),

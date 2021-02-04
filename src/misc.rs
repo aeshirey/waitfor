@@ -107,6 +107,11 @@ pub fn get_modified_time(path: &str) -> Option<SystemTime> {
     meta.modified().ok()
 }
 
+pub fn get_file_size(path: &str) -> Option<u64> {
+    let meta = std::fs::metadata(path).ok()?;
+    Some(meta.len())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

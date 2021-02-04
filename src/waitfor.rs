@@ -29,6 +29,11 @@ pub enum Wait {
         path: String,
         modified: Cell<Option<SystemTime>>,
     },
+    FileSize {
+        not: bool,
+        path: String,
+        bytes: Cell<Option<u64>>,
+    },
     Pid {
         pid: u64,
     },
@@ -81,6 +86,43 @@ impl Wait {
                     // All other cases -- save this time
                     (_, curr) => {
                         modified.set(curr);
+                        false
+                    }
+                }
+            }
+
+            Wait::FileSize {
+                not: false,
+                path,
+                bytes,
+            } => {
+                match (bytes.get(), misc::get_file_size(path)) {
+                    // Can't get the file size. This is probably due to file non-existence,
+                    // so we'll assume the condition is met
+                    (_, None) => true,
+                    // Sizes are different -- condition is met
+                    (Some(prev), Some(curr)) if prev != curr => true,
+                    // First time or subsequent with equal values - save the size and try again
+                    (_, curr) => {
+                        bytes.set(curr);
+                        false
+                    }
+                }
+            }
+            Wait::FileSize {
+                not: true,
+                path,
+                bytes,
+            } => {
+                match (bytes.get(), misc::get_file_size(path)) {
+                    // Can't get the file size. This is probably due to file non-existence,
+                    // so we'll assume the condition is met
+                    (_, None) => true,
+                    // Size hasn't changed -- condition is met
+                    (Some(prev), Some(curr)) if prev == curr => true,
+                    // First time or subsequent with changing values - save the (new) size and try again
+                    (_, curr) => {
+                        bytes.set(curr);
                         false
                     }
                 }
