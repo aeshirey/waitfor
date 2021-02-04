@@ -1,5 +1,5 @@
-use std::cell::RefCell;
 use std::time::Duration;
+use std::{cell::RefCell, time::SystemTime};
 use url::Url;
 
 /// Parses a simple human-readable duration, returning a `Duration`
@@ -19,7 +19,7 @@ pub fn parse_duration(duration: &str) -> Result<Duration, ()> {
                 // days
                 total_delay += acc * 86400;
                 acc = 0;
-            },
+            }
             'h' => {
                 // hours
                 total_delay += acc * 3600;
@@ -100,6 +100,11 @@ pub fn validate_tcp(hostarg: &str) -> bool {
         // There's no ':' in the input, so assume this isn't a host to which we can connect
         false
     }
+}
+
+pub fn get_modified_time(path: &str) -> Option<SystemTime> {
+    let meta = std::fs::metadata(path).ok()?;
+    meta.modified().ok()
 }
 
 #[cfg(test)]

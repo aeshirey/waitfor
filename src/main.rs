@@ -86,6 +86,34 @@ fn main() -> Result<(), ()> {
         }
     }
 
+    if let Some(paths) = matches.values_of("update") {
+        for path in paths {
+            if let Ok(metadata) = std::fs::metadata(path) {
+                if metadata.modified().is_ok() {
+                    waitfors.push(Wait::Update {
+                        not: false,
+                        path: path.into(),
+                        modified: None.into(),
+                    });
+                }
+            }
+        }
+    }
+
+    if let Some(paths) = matches.values_of("not-update") {
+        for path in paths {
+            if let Ok(metadata) = std::fs::metadata(path) {
+                if metadata.modified().is_ok() {
+                    waitfors.push(Wait::Update {
+                        not: true,
+                        path: path.into(),
+                        modified: None.into(),
+                    });
+                }
+            }
+        }
+    }
+
     if waitfors.is_empty() {
         // Per https://github.com/clap-rs/clap/issues/1264#issuecomment-394552708, we can't use
         // AppSettings::ArgRequiredElseHelp with default arguments, so we'll have to manually check for
@@ -236,5 +264,27 @@ fn get_app() -> clap::App<'static, 'static> {
                         Err("TCP host must include ':<port>'".into())
                     }
                 })
+        )
+        .arg(
+            Arg::with_name("update")
+                .short("u")
+                .long("update")
+                .value_name("file-or-dir")
+                .help("Delays until the specified file's modified date is updated.")
+                .long_help("When the files's update time is is changed, this condition will be true. If the modified time can't be determined initially, it is ignored. if it can't be found subsequently, that check is skipped.")
+                .required(false)
+                .multiple(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("not-update")
+                .short("U")
+                .long("not-update")
+                .value_name("file-or-dir")
+                .help("Delays until the specified file's modified date stops being updated.")
+                .long_help("When the files's update time stops changing (is identical for two consecutive checks), this condition will be true.")
+                .required(false)
+                .multiple(true)
+                .takes_value(true),
         )
 }

@@ -9,6 +9,7 @@
 | HTTP GET       | `--get [code,]url` | `-g` | `--get http://google.com` | Waits until a GET to Google returns [HTTP status code](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes) 200 |
 |                |                    | | `--get 404,http://example.com` | Waits until a GET to example.com returns 404 |
 | TCP connection | `--tcp host:port` | `-p` | `--tcp 192.168.0.123:22` | Waits until a TCP connection can be made to the specified host. The numeric port must be specified. |
+| File modification date | `--update` | `-u` | `waitfor --update log.txt` | Waits until the modification date on `log.txt` changes. If the modification date can't be retrieved, this condition is ignored |
 
 ## Negation
 You can also negate conditions (except for elapsed time) by prefixing the flag with `not` or by uppercasing the short flag:
@@ -19,6 +20,7 @@ You can also negate conditions (except for elapsed time) by prefixing the flag w
 | HTTP GET | `--not-get [code,]url` | `-G` | `--not-get http://google.com` | Waits until a GET to Google _doesn't_ return HTTP status code 200 |
 |          |                    | | `--get 404,http://example.com` | Waits until a GET to example.com returns anything but 404 |
 | TCP connection | `--not-tcp host:port` | `-P` | `--not-tcp 192.168.0.123:22` | Waits until a TCP connection _can not_ be made to the specified host (either because the host itself is down or the port isn't available). |
+| Modification date stops changing | `--not-update` | `-U` | `waitfor --not-update download.iso` | Waits until the modification date on `download.iso` stops changing. If the modification date can't be retrieved, this condition is ignored. Two identical sequential values triggers this condition. |
 
 ## Additional flags
 | Flag | Description |
