@@ -1,18 +1,18 @@
 [package]
-name = "waitforit"
-version = "0.1.0"
+name = "waitfor"
+version = "0.2.0"
 authors = ["Adam Shirey <adam@shirey.ch>"]
-edition = "2021"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 
-description = "A library to aid in synchronously waiting for some condition to be met."
-readme = "README.md"
-homepage = "https://github.com/aeshirey/waitforit/"
-repository = "https://github.com/aeshirey/waitforit/"
-license = "MIT OR Apache-2.0"
-keywords = ["delay", "wait"]
-
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
 
 [dependencies]
+clap = "2.33.3"
 ureq = "1.5.1"
 url = "2.2.0"
