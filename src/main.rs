@@ -1,9 +1,8 @@
 use clap::{App, Arg};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 mod misc;
-mod waitfor;
-use waitfor::Wait;
+use waitforit::Wait;
 
 fn main() -> Result<(), ()> {
     let matches = get_app().get_matches();
@@ -14,75 +13,49 @@ fn main() -> Result<(), ()> {
 
     if let Some(elapsed) = matches.value_of("elapsed") {
         let duration = misc::parse_duration(elapsed).unwrap();
-
-        waitfors.push(Wait::Elapsed {
-            end_instant: std::time::Instant::now().checked_add(duration).unwrap(),
-        });
+        waitfors.push(Wait::new_elapsed_from_duration(duration));
     }
 
-    if let Some(pids) = matches.values_of("pid") {
-        for pid in pids {
-            waitfors.push(Wait::Pid {
-                pid: pid.parse().unwrap(),
-            });
-        }
+    if let Some(elapsed) = matches.value_of("not-elapsed") {
+        let duration = misc::parse_duration(elapsed).unwrap();
+        waitfors.push(!Wait::new_elapsed_from_duration(duration));
     }
 
     if let Some(paths) = matches.values_of("exists") {
         for path in paths {
-            waitfors.push(Wait::Exists {
-                not: false,
-                path: path.into(),
-            });
+            waitfors.push(Wait::new_file_exists(path));
         }
     }
 
     if let Some(paths) = matches.values_of("not-exists") {
         for path in paths {
-            waitfors.push(Wait::Exists {
-                not: true,
-                path: path.into(),
-            });
+            waitfors.push(!Wait::new_file_exists(path));
         }
     }
 
     if let Some(hosts) = matches.values_of("tcp") {
         for host in hosts {
-            waitfors.push(Wait::TcpHost {
-                not: false,
-                host: host.to_string(),
-            });
+            waitfors.push(Wait::new_tcp_connect(host));
         }
     }
 
     if let Some(hosts) = matches.values_of("not-tcp") {
         for host in hosts {
-            waitfors.push(Wait::TcpHost {
-                not: true,
-                host: host.to_string(),
-            });
+            waitfors.push(!Wait::new_tcp_connect(host));
         }
     }
 
     if let Some(urlargs) = matches.values_of("get") {
         for urlarg in urlargs {
             let (status, url) = misc::parse_http_get(urlarg);
-            waitfors.push(Wait::HttpGet {
-                not: false,
-                url,
-                status,
-            });
+            waitfors.push(Wait::new_http_get(url, status));
         }
     }
 
     if let Some(urlargs) = matches.values_of("not-get") {
         for urlarg in urlargs {
             let (status, url) = misc::parse_http_get(urlarg);
-            waitfors.push(Wait::HttpGet {
-                not: true,
-                url,
-                status,
-            });
+            waitfors.push(!Wait::new_http_get(url, status));
         }
     }
 
@@ -90,11 +63,7 @@ fn main() -> Result<(), ()> {
         for path in paths {
             if let Ok(metadata) = std::fs::metadata(path) {
                 if metadata.is_file() && metadata.modified().is_ok() {
-                    waitfors.push(Wait::Update {
-                        not: false,
-                        path: path.into(),
-                        modified: None.into(),
-                    });
+                    waitfors.push(Wait::new_file_update(path));
                 }
             }
         }
@@ -104,11 +73,7 @@ fn main() -> Result<(), ()> {
         for path in paths {
             if let Ok(metadata) = std::fs::metadata(path) {
                 if metadata.is_file() && metadata.modified().is_ok() {
-                    waitfors.push(Wait::Update {
-                        not: true,
-                        path: path.into(),
-                        modified: None.into(),
-                    });
+                    waitfors.push(!Wait::new_file_update(path));
                 }
             }
         }
@@ -119,11 +84,7 @@ fn main() -> Result<(), ()> {
             if let Ok(metadata) = std::fs::metadata(path) {
                 // TODO: handle directories?
                 if metadata.is_file() {
-                    waitfors.push(Wait::FileSize {
-                        not: false,
-                        path: path.into(),
-                        bytes: None.into(),
-                    });
+                    waitfors.push(Wait::new_file_size(path));
                 }
             }
         }
@@ -133,15 +94,21 @@ fn main() -> Result<(), ()> {
         for path in paths {
             if let Ok(metadata) = std::fs::metadata(path) {
                 if metadata.is_file() {
-                    waitfors.push(Wait::FileSize {
-                        not: true,
-                        path: path.into(),
-                        bytes: None.into(),
-                    });
+                    waitfors.push(!Wait::new_file_size(path));
                 }
             }
         }
     }
+
+    /*
+    if let Some(pids) = matches.values_of("pid") {
+        for pid in pids {
+            waitfors.push(Wait::Pid {
+                pid: pid.parse().unwrap(),
+            });
+        }
+    }
+    */
 
     if waitfors.is_empty() {
         // Per https://github.com/clap-rs/clap/issues/1264#issuecomment-394552708, we can't use
@@ -150,15 +117,15 @@ fn main() -> Result<(), ()> {
         return get_app().print_help().map_err(|_| ());
     }
 
-    let process_started = std::time::Instant::now();
+    let process_started = Instant::now();
 
     let interval = Duration::from_secs_f64(matches.value_of("interval").unwrap().parse().unwrap());
 
     loop {
-        let start = std::time::Instant::now();
+        let start = Instant::now();
         for waitfor in waitfors.iter() {
             if verbose {
-                println!("Checking {:?}", waitfor);
+                println!("Checking {waitfor:?}");
             }
 
             if waitfor.condition_met() {
@@ -177,7 +144,7 @@ fn main() -> Result<(), ()> {
 
 fn get_app() -> clap::App<'static, 'static> {
     App::new("waitfor")
-        .version("0.1")
+        .version("0.2.1")
         .author("Adam Shirey <adam@shirey.ch>")
         .about("")
         .arg(
@@ -190,7 +157,7 @@ fn get_app() -> clap::App<'static, 'static> {
                 .default_value("2")
                 .takes_value(true)
                 .validator(|a| {
-                    if a.chars().all(|c| c.is_digit(10)) {
+                    if a.chars().all(|c| c.is_ascii_digit()) {
                         Ok(())
                     } else {
                         Err("Interval must be numeric".into())
@@ -216,7 +183,21 @@ fn get_app() -> clap::App<'static, 'static> {
                 .validator(|a| {
                     misc::parse_duration(&a)
                         .map(|_| ())
-                        .map_err(|_| format!("Invalid duration definition: {}", a))
+                        .map_err(|_| format!("Invalid duration definition: {a}"))
+                }),
+        )
+        .arg(
+            Arg::with_name("not-elapsed")
+                .short("T")
+                .long("not-elapsed")
+                .value_name("duration-def")
+                .help("Condition is met only until the period has passed.")
+                .required(false)
+                .takes_value(true)
+                .validator(|a| {
+                    misc::parse_duration(&a)
+                        .map(|_| ())
+                        .map_err(|_| format!("Invalid duration definition: {a}"))
                 }),
         )
         .arg(

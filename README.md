@@ -13,16 +13,26 @@
 | File size | `--size` | `-s` | `waitfor --size log.txt` | Waits until size of `log.txt` changes. The file must exist initially to be included, but if it ceases to exist, the condition will be triggered. |
 
 ## Negation
-You can also negate conditions (except for elapsed time) by prefixing the flag with `not` or by uppercasing the short flag:
+You can also negate conditions by prefixing the flag with `not` or by uppercasing the short flag:
 
 | Condition type | Flag | Short | Example | Notes |
 |----------------|------|-------|---------|-------|
+| Duration not yet met | `--not-elapsed` | `-T` | `waitfor --not-elapsed 10m` | See comments below |
 | File non-existence | `--not-exists filename` | `-E` | `waitfor --not-exists bar.txt` | Waits until the file `bar.txt` _no longer_ exists |
 | HTTP GET | `--not-get [code,]url` | `-G` | `--not-get http://google.com` | Waits until a GET to Google _doesn't_ return HTTP status code 200 |
 |          |                    | | `--get 404,http://example.com` | Waits until a GET to example.com returns anything but 404 |
 | TCP connection | `--not-tcp host:port` | `-P` | `--not-tcp 192.168.0.123:22` | Waits until a TCP connection _can not_ be made to the specified host (either because the host itself is down or the port isn't available). |
 | Modification date stops changing | `--not-update` | `-U` | `waitfor --not-update download.iso` | Waits until the modification date on `download.iso` stops changing. If the modification date can't be retrieved, this condition is ignored. Two identical sequential values trigger this condition. |
 | File size stops changing | `--not-size` | `-S` | `waitfor --not-size download.iso` | Waits until size of `download.iso` stops changing. The file must exist initially to be included, but if it ceases to exist, the condition will be triggered. Two identical sequential values also trigger this condition. |
+
+### Not-Elapsed
+The `--not-elapsed` flag, by itself, will immediately resolve, but it is intended to be combined with other flags. For example, to delay until a file is deleted but _only_ if it's in the first minute:
+
+```bash
+waitfor -T 1m -E foo.txt
+```
+
+If foo.txt isn't deleted in the first minute, then the command will block indefinitely. The underlying library, [`waitforit`](https://github.com/aeshirey/waitforit), allows AND/OR combinations for richer expression.
 
 ## Additional flags
 | Flag | Description |

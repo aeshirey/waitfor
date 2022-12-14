@@ -1,5 +1,5 @@
+use std::cell::RefCell;
 use std::time::Duration;
-use std::{cell::RefCell, time::SystemTime};
 use url::Url;
 
 /// Parses a simple human-readable duration, returning a `Duration`
@@ -100,16 +100,6 @@ pub fn validate_tcp(hostarg: &str) -> bool {
         // There's no ':' in the input, so assume this isn't a host to which we can connect
         false
     }
-}
-
-pub fn get_modified_time(path: &str) -> Option<SystemTime> {
-    let meta = std::fs::metadata(path).ok()?;
-    meta.modified().ok()
-}
-
-pub fn get_file_size(path: &str) -> Option<u64> {
-    let meta = std::fs::metadata(path).ok()?;
-    Some(meta.len())
 }
 
 #[cfg(test)]
